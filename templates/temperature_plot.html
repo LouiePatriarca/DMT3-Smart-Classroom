@@ -1,0 +1,35 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<h1>Temperature</h1>
+<div id="temperature-plot" style="width: 100%; height: 500px;"></div>
+<script src="{{ url_for('static', filename='js/sensor.js') }}"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+    fetch('/temperature_data')
+        .then(response => response.json())
+        .then(data => {
+            const timestamps = data.map(record => new Date(record.timestamp));
+            const temperatures = data.map(record => record.temperature);
+            
+            const trace = {
+                x: timestamps,
+                y: temperatures,
+                mode: 'lines+markers',
+                type: 'scatter'
+            };
+
+            const layout = {
+                title: 'Temperature Data from 7 AM to 6 PM',
+                xaxis: {
+                    title: 'Time'
+                },
+                yaxis: {
+                    title: 'Temperature (°C)'
+                }
+            };
+
+            Plotly.newPlot('temperature-plot', [trace], layout);
+        });
+</script>
+{% endblock %}

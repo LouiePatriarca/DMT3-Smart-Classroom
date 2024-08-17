@@ -1,0 +1,81 @@
+{% extends 'index.html' %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <div class="row my-4">
+        <div class="col-md-auto">
+            <div class="card" style="width: 20rem; height: 12rem; cursor: pointer;">
+                <div class="card-body">
+                    <h5 class="card-title">AC Unit Temperature</h5>
+                    <div class="d-flex align-items-center">
+                        <div id="temperature-display" style="font-size: 5rem;">{{ ac_temperature }}°C</div>
+                        <div class="ms-auto d-inline-block">
+                            <button class="btn btn-secondary" onclick="adjustTemperature('up', event)">▲</button>
+                            <button class="btn btn-secondary mx-1" onclick="adjustTemperature('down', event)">▼</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-auto">
+            <div class="card" style="width: 20rem; height: 12rem; cursor: pointer;">
+                <div class="card-body">
+                    <h5 class="card-title">Power Consumption</h5>
+                    <div class="d-flex align-items-center">
+                        <div id="power-consumption-display" style="font-size: 5rem;">{{ power_consumption }} kWh</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+ 
+    <div class="row my-4">
+        <div class="col-md-auto">
+            <div class="card" style="width: 20rem; height: 12rem;  cursor: pointer;" onclick="openTemperaturePlot()">
+                <div class="card-body">
+                    <h5 class="card-title">Temperature</h5>
+                    <div class="d-flex align-items-center">
+                        <div>
+                           <span id="sensor1_temp" style="font-size: 2rem;">Inside: {{ inside_temperature }}°C</span></p>
+                           <span id="sensor2_temp" style="font-size: 2rem;">Outside {{ outside_temperature }}°C</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-auto">
+            <div class="card" style="width: 20rem; height: 12rem;  cursor: pointer;" onclick="openHumidityPlot()">
+                <div class="card-body">
+                    <h5 class="card-title">Humidity</h5>
+                    <div class="d-flex align-items-center">
+                        <div>
+                           <span id="sensor1_humidity" style="font-size: 5rem;">{{ humidity }}%</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>  
+
+
+<script>
+    function adjustTemperature(direction, event) {
+        event.stopPropagation();  // Prevent the card click event
+        fetch('/adjust_temperature', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({adjustment: direction})
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('temperature-display').textContent = data.temperature + '°C';
+        });
+    }
+
+    function openTemperaturePlot() {
+        window.location.href = '/temperature_plot';  // Redirect to the plot page
+    }
+</script>
+{% endblock %}
