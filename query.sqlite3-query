@@ -1,0 +1,6 @@
+-- database: ./temperature_data.db
+
+-- Use the ▷ button in the top right corner to run the entire file.
+
+SELECT * FROM temperature_records;
+DELETE FROM temperature_records;

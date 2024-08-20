@@ -1,4 +1,5 @@
 import datetime
+import random
 from flask import Flask, jsonify, render_template, request
 from pymodbus.client import ModbusSerialClient as ModbusClient
 from threading import Thread, Event
@@ -14,36 +15,124 @@ client.connect()
 
 # Sensor data storage
 sensor_data = {
-    1: {'inside_temperature': None, 'humidity': None},
-    2: {'outside_temperature': None, 'humidity': None},
-    3: {'inside_temperature': None, 'humidity': None},
-    4: {'inside_temperature': None, 'humidity': None}
+    1: {'inside_temperature': None, 'inside_humidity': None},
+    2: {'outside_temperature': None, 'outside_humidity': None},
+}
+
+power_consumption_data = {
+    1: {'power_consumption': None}
 }
 
 ac_temperature = 0
 
 def setup_database():
-    conn = sqlite3.connect('temperature_data.db')
+    conn = sqlite3.connect('data.db')
     cursor = conn.cursor()
     
-    # Create table
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS temperature_records (
+    CREATE TABLE IF NOT EXISTS inside_temperature_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         temperature REAL
     )
     ''')
     
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS inside_humidity_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        humidity REAL
+    )
+    ''')
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS outside_temperature_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        temperature REAL
+    )
+    ''')
+    
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS outside_humidity_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        humidity REAL
+    )
+    ''')
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS power_consumption_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        power_consumption REAL
+    )
+    ''')
+
+    # # Function to generate random temperatures and timestamps
+    # def generate_dummy_data(start_date, end_date, num_records):
+    #     data = []
+    #     current_time = start_date
+    #     time_delta = (end_date - start_date) / num_records
+
+    #     for _ in range(num_records):
+    #         temperature = round(random.uniform(10, 20), 1)  # Random temperature between 15.0 and 25.0
+    #         data.append((current_time, temperature))
+    #         current_time += time_delta
+
+    #     return data
+
+    # # Define start and end dates for the dummy data
+    # start_date = datetime.datetime.now() - datetime.timedelta(days=30)  # 30 days ago
+    # end_date = datetime.datetime.now()
+    # num_records = 100  # Number of records to insert
+
+    # # Generate dummy data
+    # dummy_data = generate_dummy_data(start_date, end_date, num_records)
+
+    # # Insert the dummy data into the table
+    # cursor.executemany('''
+    #     INSERT INTO power_consumption_records (timestamp, power_consumption)
+    #     VALUES (?, ?)
+    # ''', dummy_data)
+    
     conn.commit()
     conn.close()
 
 setup_database()
 
-def record_temperature(temp):
-    conn = sqlite3.connect('temperature_data.db')
+def record_inside_temperature(inside_temperature):
+    conn = sqlite3.connect('data.db')
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO temperature_records (temperature) VALUES (?)', (temp,))
+    cursor.execute('INSERT INTO inside_temperature_records (temperature) VALUES (?)', (inside_temperature,))
+    conn.commit()
+    conn.close()
+
+def record_inside_humidity(inside_humidity):
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO inside_humidity_records (humidity) VALUES (?)', (inside_humidity,))
+    conn.commit()
+    conn.close()
+
+def record_outside_temperature(outside_temperature):
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO outside_temperature_records (temperature) VALUES (?)', (outside_temperature,))
+    conn.commit()
+    conn.close()
+
+def record_outside_humidity(outside_humidity):
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO outside_humidity_records (humidity) VALUES (?)', (outside_humidity,))
+    conn.commit()
+    conn.close()
+
+def record_power_consumption(power_consumption):
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO power_consumption_records (power_consumption) VALUES (?)', (power_consumption,))
     conn.commit()
     conn.close()
 
@@ -52,25 +141,60 @@ stop_event = Event()
 
 def poll_sensors():
     while not stop_event.is_set():
-        for sensor_id in range(1, 5):  # Assuming 4 sensors
+        inside_humidity = 0
+        inside_temperature = 0
+        for sensor_id in range(1, 4):
             try:
                 result = client.read_holding_registers(0, 2, slave=sensor_id)
                 if not result.isError():
-                    sensor_data[sensor_id]['humidity'] = result.registers[0]
-                    if result.registers[1] == 0:
-                        sensor_data[sensor_id]['inside_temperature'] = 0
-                    else:
-                        sensor_data[sensor_id]['inside_temperature'] = result.registers[1]
-                        record_temperature(result.registers[1])
+                    inside_humidity += result.registers[0]
+                    inside_temperature += result.registers[1]
                 else:
                     print(f"Error reading sensor {sensor_id}")
             except Exception as e:
                 print(f"Exception reading sensor {sensor_id}: {e}")
-        time.sleep(2)  # Poll every 2 seconds
+
+        average_inside_humidity = inside_humidity/3
+        average_inside_temperature = inside_temperature/3
+        
+        record_inside_humidity(average_inside_humidity)
+        record_inside_temperature(average_inside_temperature)
+        
+        sensor_data[1]['inside_humidity'] = average_inside_humidity
+        sensor_data[1]['inside_temperature'] = average_inside_temperature
+        
+        outside_humidity = 0
+        outside_temperature = 0
+        result1 = client.read_holding_registers(0, 2, slave=4)
+        if not result1.isError():
+            sensor_data[2]['outside_humidity'] = result1.registers[0]
+            sensor_data[2]['outside_temperature'] = result1.registers[1]
+            outside_humidity = result1.registers[0]
+            outside_temperature = result1.registers[1]
+        else:
+            print(f"Error reading sensor {sensor_id}")
+
+        record_outside_humidity(outside_humidity)
+        record_outside_temperature(outside_temperature)
+        time.sleep(10)
 
 # Start polling thread
 polling_thread = Thread(target=poll_sensors)
 polling_thread.start()
+
+def poll_consumption():
+    while not stop_event.is_set():
+        result1 = client.read_holding_registers(0, 2, slave=5)
+        if not result1.isError():
+            power_consumption_data[1]['power_consumption'] = result1.registers[0]
+            record_power_consumption(result1.registers[0])
+        else:
+            print(f"Error reading device")
+        time.sleep(10)
+
+# Start polling thread
+polling_thread1 = Thread(target=poll_consumption)
+polling_thread1.start()
 
 @app.route('/')
 def dashboard():
@@ -83,6 +207,10 @@ def settings():
 @app.route('/sensor_data', methods=['GET'])
 def get_sensor_data():
     return jsonify(sensor_data)
+
+@app.route('/power_consumption_device_data', methods=['GET'])
+def get_power_consumption_device_data():
+    return jsonify(power_consumption_data)
 
 @app.route('/stop', methods=['POST'])
 def stop_polling():
@@ -98,29 +226,161 @@ def adjust_temperature():
         ac_temperature += 1
     elif adjustment == 'down':
         ac_temperature -= 1
+
+    print(ac_temperature)
     return jsonify({'temperature': ac_temperature})
 
-@app.route('/temperature_data', methods=['GET'])
-def get_temperature_data():
-    start_time = datetime.datetime.now().replace(hour=7, minute=0, second=0, microsecond=0)
-    end_time = datetime.datetime.now().replace(hour=18, minute=0, second=0, microsecond=0)
+@app.route('/inside_humidity_data', methods=['GET'])
+def get_inside_humidity_data():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
     
-    conn = sqlite3.connect('temperature_data.db')
+    start_time = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+    end_time = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+    end_time = end_time.replace(hour=23, minute=59, second=59)  # Set the end time to the end of the day
+    
+    conn = sqlite3.connect('data.db')
     cursor = conn.cursor()
     cursor.execute('''
-    SELECT timestamp, temperature FROM temperature_records
+    SELECT timestamp, humidity FROM inside_humidity_records
+    WHERE timestamp BETWEEN ? AND ?
+    ''', (start_time, end_time))
+    
+    rows = cursor.fetchall()
+    conn.close()
+
+    filtered_data = []
+    for row in rows:
+        timestamp = datetime.datetime.fromisoformat(row[0])
+        if 7 <= timestamp.hour <= 18:
+            filtered_data.append({'timestamp': row[0], 'humidity': row[1]})
+  
+    print(filtered_data)
+    return jsonify(filtered_data)
+
+@app.route('/outside_humidity_data', methods=['GET'])
+def get_outside_humidity_data():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    start_time = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+    end_time = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+    end_time = end_time.replace(hour=23, minute=59, second=59)  # Set the end time to the end of the day
+
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    SELECT timestamp, humidity FROM outside_humidity_records
     WHERE timestamp BETWEEN ? AND ?
     ''', (start_time, end_time))
     
     rows = cursor.fetchall()
     conn.close()
     
-    data = [{'timestamp': row[0], 'temperature': row[1]} for row in rows]
-    return jsonify(data)
+    filtered_data = []
+    for row in rows:
+        timestamp = datetime.datetime.fromisoformat(row[0])
+        if 7 <= timestamp.hour <= 18:
+            filtered_data.append({'timestamp': row[0], 'humidity': row[1]})
+    
+    print(filtered_data)
+    return jsonify(filtered_data)
+
+@app.route('/inside_temperature_data', methods=['GET'])
+def get_inside_temperature_data():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    start_time = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+    end_time = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+    end_time = end_time.replace(hour=23, minute=59, second=59)  # Set the end time to the end of the day
+    
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    SELECT timestamp, temperature FROM inside_temperature_records
+    WHERE timestamp BETWEEN ? AND ?
+    ''', (start_time, end_time))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    filtered_data = []
+    for row in rows:
+        timestamp = datetime.datetime.fromisoformat(row[0])
+        if 7 <= timestamp.hour <= 18:
+            filtered_data.append({'timestamp': row[0], 'temperature': row[1]})
+    
+    print(filtered_data)
+    return jsonify(filtered_data)
+
+@app.route('/outside_temperature_data', methods=['GET'])
+def get_outside_temperature_data():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    start_time = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+    end_time = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+    end_time = end_time.replace(hour=23, minute=59, second=59)  # Set the end time to the end of the day
+    
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    SELECT timestamp, temperature FROM outside_temperature_records
+    WHERE timestamp BETWEEN ? AND ?
+    ''', (start_time, end_time))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    filtered_data = []
+    for row in rows:
+        timestamp = datetime.datetime.fromisoformat(row[0])
+        if 7 <= timestamp.hour <= 18:
+            filtered_data.append({'timestamp': row[0], 'temperature': row[1]})
+    
+    print(filtered_data)
+    return jsonify(filtered_data)
+
+@app.route('/power_consumption_data', methods=['GET'])
+def get_power_consumption_data():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    start_time = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+    end_time = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+    end_time = end_time.replace(hour=23, minute=59, second=59)  # Set the end time to the end of the day
+    
+    conn = sqlite3.connect('data.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    SELECT timestamp, power_consumption FROM power_consumption_records
+    WHERE timestamp BETWEEN ? AND ?
+    ''', (start_time, end_time))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    filtered_data = []
+    for row in rows:
+        timestamp = datetime.datetime.fromisoformat(row[0])
+        if 7 <= timestamp.hour <= 18:
+            filtered_data.append({'timestamp': row[0], 'power_consumption': row[1]})
+    
+    print(filtered_data)
+    return jsonify(filtered_data)
 
 @app.route('/temperature_plot')
 def temperature_plot():
     return render_template('temperature_plot.html')
+
+@app.route('/humidity_plot')
+def humidity_plot():
+    return render_template('humidity_plot.html')
+
+@app.route('/power_consumption_plot')
+def power_consumption_plot():
+    return render_template('power_consumption_plot.html')
 
 if __name__ == '__main__':
     try:

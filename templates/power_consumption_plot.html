@@ -1,7 +1,7 @@
 {% extends 'index.html' %}
 
 {% block content %}
-<h1 style="color: #2bad81;">Temperature Data</h1>
+<h1 style="color: #2bad81;">Power Consumption Data</h1>
 
 <!-- Date Selection -->
 <div class="d-flex flex-column flex-sm-row align-items-sm-center mb-3">
@@ -14,11 +14,8 @@
     <button id="update-button" class="btn btn-primary">Update</button>
 </div>
 
-<h2 style="color: #2bad81;">Inside Temperature</h2>
-<div id="inside-temperature-plot" class="temperature-plot"></div>
-
-<h2 style="color: #2bad81;">Outside Temperature</h2>
-<div id="outside-temperature-plot" class="temperature-plot"></div>
+<h2 style="color: #2bad81;">Power Consumption<h2>
+<div id="power-consumption-plot" class="power-consumption-plot"></div> 
 
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script>
@@ -34,12 +31,11 @@
         document.getElementById('start-date').value = formattedYesterday; // Set start-date to yesterday
         document.getElementById('end-date').value = formattedToday; // Set end-date to today
 
-        updateTemperatureData(formattedYesterday, formattedToday);
+        updatePowerConsumptionData(formattedYesterday, formattedToday);
     }
 
-    function updateTemperatureData(startDate, endDate) {
-        updatePlot('/inside_temperature_data', 'inside-temperature-plot', startDate, endDate);
-        updatePlot('/outside_temperature_data', 'outside-temperature-plot', startDate, endDate);
+    function updatePowerConsumptionData(startDate, endDate) {
+        updatePlot('/power_consumption_data', 'power-consumption-plot', startDate, endDate);
     }
 
     // Set the default date and time when the page loads
@@ -58,26 +54,27 @@
             document.getElementById('end-date').value = endDate;
         }
 
-        updateTemperatureData(startDate, endDate);
+        updatePowerConsumptionData(startDate, endDate);
     });
 
     function updatePlot(url, plotId, startDate, endDate) {
         fetch(`${url}?start_date=${startDate}&end_date=${endDate}`)
             .then(response => response.json())
             .then(data => {
+                console.log(data);
                 const timestamps = data.map(record => new Date(record.timestamp));
-                const temperature = data.map(record => record.temperature);
-                console.log(temperature);
+                const power_consumption = data.map(record => record.power_consumption);
+                console.log(power_consumption);
                 const trace = {
                     x: timestamps,
-                    y: temperature,
+                    y: power_consumption,
                     mode: 'lines+markers',
                     type: 'scatter'
                 };
 
                 const layout = {
                     title: {
-                        text: 'Temperature Data',
+                        text: 'Power Consumption Data',
                         x: 0, // Align to the left (0 = left, 0.5 = center, 1 = right)
                         xanchor: 'left' // Anchor the title to the left
                     },
@@ -85,12 +82,11 @@
                         title: 'Time'
                     },
                     yaxis: {
-                        title: 'Temperature (°C)'
+                        title: 'Power Consumption (kWh)'
                     },
                     margin: {
                         l: 50, r: 10, t: 40, b: 40
-                    },
-                    autosize: true // Make the plot responsive
+                    }
                 };
 
                 Plotly.newPlot(plotId, [trace], layout);
@@ -100,28 +96,31 @@
 
 <style>
     /* Ensure plots use full width */
-    .temperature-plot {
+    .power-consumption-plot {
         width: 100%;
-        height: 300px; /* Default height */
+        height: 350px; /* Default height */
     }
 
     /* Adjust the height for mobile devices */
     @media (max-width: 576px) {
-        .temperature-plot {
-            height: 250px; /* Adjust height on mobile */
+        .power-consumption-plot {
+            width: 100%;
+            height: 350px; /* Increase height on mobile */
         }
     }
 
     /* Optional: Adjust height on tablets */
     @media (min-width: 576px) and (max-width: 768px) {
-        .temperature-plot {
-            height: 300px; /* Medium height for tablets */
+        .power-consumption-plot {
+            width: 100%;
+            height: 350px; /* Medium height for tablets */
         }
     }
 
     /* Adjust the height for large screens */
     @media (min-width: 768px) {
-        .temperature-plot {
+        .power-consumption-plot {
+            width: 100%;
             height: 350px; /* Default height for larger screens */
         }
     }

@@ -5,11 +5,11 @@
 <div class="container-fluid">
     <div class="row my-4">
         <div class="col-md-auto">
-            <div class="card" style="width: 20rem; height: 12rem; cursor: pointer;">
+            <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">AC Unit Temperature</h5>
                     <div class="d-flex align-items-center">
-                        <div id="temperature-display" style="font-size: 5rem;">{{ ac_temperature }}°C</div>
+                        <div id="temperature-display" style="font-size: 5rem;">0 °C</div>
                         <div class="ms-auto d-inline-block">
                             <button class="btn btn-secondary" onclick="adjustTemperature('up', event)">▲</button>
                             <button class="btn btn-secondary mx-1" onclick="adjustTemperature('down', event)">▼</button>
@@ -19,11 +19,11 @@
             </div>
         </div>
         <div class="col-md-auto">
-            <div class="card" style="width: 20rem; height: 12rem; cursor: pointer;">
+            <div class="card" onclick="openPowerConsumptionPlot()">
                 <div class="card-body">
                     <h5 class="card-title">Power Consumption</h5>
                     <div class="d-flex align-items-center">
-                        <div id="power-consumption-display" style="font-size: 5rem;">{{ power_consumption }} kWh</div>
+                        <div id="power-consumption-display" style="font-size: 5rem;">0 kWh</div>
                     </div>
                 </div>
             </div>
@@ -32,25 +32,28 @@
  
     <div class="row my-4">
         <div class="col-md-auto">
-            <div class="card" style="width: 20rem; height: 12rem;  cursor: pointer;" onclick="openTemperaturePlot()">
+            <div class="card" onclick="openTemperaturePlot()">
                 <div class="card-body">
                     <h5 class="card-title">Temperature</h5>
                     <div class="d-flex align-items-center">
                         <div>
-                           <span id="sensor1_temp" style="font-size: 2rem;">Inside: {{ inside_temperature }}°C</span></p>
-                           <span id="sensor2_temp" style="font-size: 2rem;">Outside {{ outside_temperature }}°C</span></p>
+                            <p></p>
+                           <span id="inside_temperature" style="font-size: 1.5rem;">Inside Temperature: 0 °C</span></p>
+                           <span id="outside_temperature" style="font-size: 1.5rem;">Outside Temperature: 0 °C</span></p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-auto">
-            <div class="card" style="width: 20rem; height: 12rem;  cursor: pointer;" onclick="openHumidityPlot()">
+            <div class="card" onclick="openHumidityPlot()">
                 <div class="card-body">
                     <h5 class="card-title">Humidity</h5>
                     <div class="d-flex align-items-center">
                         <div>
-                           <span id="sensor1_humidity" style="font-size: 5rem;">{{ humidity }}%</span></p>
+                            <p></p>
+                           <span id="inside_humidity" style="font-size: 1.5rem;">Inside Humidity: 0 %</span></p>
+                           <span id="outside_humidity" style="font-size: 1.5rem;">Outside Humidity: 0 %</span></p>
                         </div>
                     </div>
                 </div>
@@ -58,8 +61,6 @@
         </div>
     </div>
 </div>  
-
-
 <script>
     function adjustTemperature(direction, event) {
         event.stopPropagation();  // Prevent the card click event
@@ -70,12 +71,23 @@
         })
         .then(response => response.json())
         .then(data => {
-            document.getElementById('temperature-display').textContent = data.temperature + '°C';
+            if(!data.temperature){
+                document.getElementById('temperature-display').textContent = '0 °C';
+            }
+            else{
+                document.getElementById('temperature-display').textContent = data.temperature + ' °C';
+            }
         });
     }
 
     function openTemperaturePlot() {
         window.location.href = '/temperature_plot';  // Redirect to the plot page
+    }
+    function openHumidityPlot() {
+        window.location.href = '/humidity_plot';  // Redirect to the plot page
+    }
+    function openPowerConsumptionPlot() {
+        window.location.href = '/power_consumption_plot';  // Redirect to the plot page
     }
 </script>
 {% endblock %}
