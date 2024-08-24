@@ -28,6 +28,16 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-auto">
+            <div class="card two-rows">
+                <div class="card-body">
+                    <h5 class="card-title">System Control</h5>
+                    <div class="d-flex flex-column align-items-start">
+                        <button id="toggle-polling-btn" class="btn btn-primary mb-3" onclick="togglePolling()">Start</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
  
     <div class="row my-4">
@@ -59,9 +69,26 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-auto">
+            <div class="card two-rows">
+                <div class="card-body">
+                    <h5 class="card-title">System Status</h5>
+                    <div class="d-flex flex-column align-items-start">
+                        <div>
+                            <p id="sensor1-status" style="font-size: 1rem;">Inside Temperature Sensor 1:            Offline</p>
+                            <p id="sensor2-status" style="font-size: 1rem;">Inside Temperature Sensor 2:            Offline</p>
+                            <p id="sensor3-status" style="font-size: 1rem;">Inside Temperature Sensor 3:            Offline</p>
+                            <p id="sensor4-status" style="font-size: 1rem;">Outside Temperature Sensor:             Offline</p>
+                            <p id="sensor5-status" style="font-size: 1rem;">Power Consumption Monitoring Device:    Offline</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>  
 <script>
+    let isPolling = false;  // Variable to track the polling state
     function adjustTemperature(direction, event) {
         event.stopPropagation();  // Prevent the card click event
         fetch('/adjust_temperature', {
@@ -89,5 +116,51 @@
     function openPowerConsumptionPlot() {
         window.location.href = '/power_consumption_plot';  // Redirect to the plot page
     }
+    function togglePolling() {
+        if (isPolling) {
+            fetch('/stop', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data.message);
+                document.getElementById('toggle-polling-btn').textContent = 'Start';
+                document.getElementById('toggle-polling-btn').classList.remove('btn-danger');
+                document.getElementById('toggle-polling-btn').classList.add('btn-primary');
+                isPolling = false;
+            });
+        } else {
+            fetch('/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data.message);
+                document.getElementById('toggle-polling-btn').textContent = 'Stop';
+                document.getElementById('toggle-polling-btn').classList.remove('btn-primary');
+                document.getElementById('toggle-polling-btn').classList.add('btn-danger');
+                isPolling = true;
+            });
+        }
+    }
+    // Function to update sensor status
+    function updateSensorStatus() {
+        fetch('/sensor_status', {
+            method: 'GET'
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('sensor1-status').textContent = `Inside Temperature Sensor 1:           ${data.sensor1}`;
+            document.getElementById('sensor2-status').textContent = `Inside Temperature Sensor 2:           ${data.sensor2}`;
+            document.getElementById('sensor3-status').textContent = `Inside Temperature Sensor 3:           ${data.sensor3}`;
+            document.getElementById('sensor4-status').textContent = `Outside Temperature Sensor:            ${data.sensor4}`;
+            document.getElementById('sensor5-status').textContent = `Power Consumption Monitoring Device:   ${data.sensor5}`;
+        });
+    }
+
+    // Periodically update sensor status
+    setInterval(updateSensorStatus, 5000);  // Update every 5 seconds
 </script>
 {% endblock %}

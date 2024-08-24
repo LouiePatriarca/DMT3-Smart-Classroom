@@ -10,7 +10,7 @@ import sqlite3
 app = Flask(__name__)
 
 # Modbus client setup
-client = ModbusClient(method='rtu', port='COM2', baudrate=9600, timeout=1)
+client = ModbusClient(method='rtu', port='COM3', baudrate=9600, timeout=1)
 client.connect()
 
 # Sensor data storage
@@ -24,6 +24,14 @@ power_consumption_data = {
 }
 
 ac_temperature = 0
+
+sensor_status = {
+    1: {'sensor1': 0},
+    2: {'sensor2': 0},
+    3: {'sensor3': 0},
+    4: {'sensor4': 0},
+    5: {'sensor5': 0},
+}
 
 def setup_database():
     conn = sqlite3.connect('data.db')
@@ -135,66 +143,81 @@ def record_power_consumption(power_consumption):
     cursor.execute('INSERT INTO power_consumption_records (power_consumption) VALUES (?)', (power_consumption,))
     conn.commit()
     conn.close()
-
-# Event to stop the background thread
+# Event to control the background thread
 stop_event = Event()
-
+start_event = Event()
 def poll_sensors():
     while not stop_event.is_set():
-        inside_humidity = 0
-        inside_temperature = 0
-        for sensor_id in range(1, 4):
-            try:
-                result = client.read_holding_registers(0, 2, slave=sensor_id)
-                if not result.isError():
-                    inside_humidity += result.registers[0]
-                    inside_temperature += result.registers[1]
-                else:
-                    print(f"Error reading sensor {sensor_id}")
-            except Exception as e:
-                print(f"Exception reading sensor {sensor_id}: {e}")
+        if start_event.is_set():
+            inside_humidity = 0
+            inside_temperature = 0
+            for sensor_id in range(1, 4):
+                try:
+                    result = client.read_holding_registers(0, 2, slave=sensor_id)
+                    if not result.isError():
+                        inside_humidity += result.registers[0]
+                        inside_temperature += result.registers[1]
+                        if sensor_id == 1:
+                            sensor_status[1] = "Online"
+                        if sensor_id == 2:
+                            sensor_status[2] = "Online"
+                        if sensor_id == 3:
+                            sensor_status[3] = "Online"
+                    else:
+                        print(f"Error reading sensor {sensor_id}")
+                        if sensor_id == 1:
+                            sensor_status[1] = "Offline"
+                        if sensor_id == 2:
+                            sensor_status[2] = "Offline"
+                        if sensor_id == 3:
+                            sensor_status[3] = "Offline"
+                except Exception as e:
+                    print(f"Exception reading sensor {sensor_id}: {e}")
 
-        average_inside_humidity = inside_humidity/3
-        average_inside_temperature = inside_temperature/3
-        
-        record_inside_humidity(average_inside_humidity)
-        record_inside_temperature(average_inside_temperature)
-        
-        sensor_data[1]['inside_humidity'] = average_inside_humidity
-        sensor_data[1]['inside_temperature'] = average_inside_temperature
-        
-        outside_humidity = 0
-        outside_temperature = 0
-        result1 = client.read_holding_registers(0, 2, slave=4)
-        if not result1.isError():
-            sensor_data[2]['outside_humidity'] = result1.registers[0]
-            sensor_data[2]['outside_temperature'] = result1.registers[1]
-            outside_humidity = result1.registers[0]
-            outside_temperature = result1.registers[1]
-        else:
-            print(f"Error reading sensor {sensor_id}")
+            average_inside_humidity = "{:.2f}".format(inside_humidity / 3)
+            average_inside_temperature = "{:.2f}".format(inside_temperature / 3)
+            
+            record_inside_humidity(average_inside_humidity)
+            record_inside_temperature(average_inside_temperature)
+            
+            sensor_data[1]['inside_humidity'] = average_inside_humidity
+            sensor_data[1]['inside_temperature'] = average_inside_temperature
+            
+            outside_humidity = 0
+            outside_temperature = 0
+            result1 = client.read_holding_registers(0, 2, slave=4)
+            if not result1.isError():
+                sensor_data[2]['outside_humidity'] = "{:.2f}".format(result1.registers[0])
+                sensor_data[2]['outside_temperature'] = "{:.2f}".format(result1.registers[1])
+                outside_humidity = result1.registers[0]
+                outside_temperature = result1.registers[1]
+                sensor_status[4] = "On"
+            else:
+                print(f"Error reading sensor {sensor_id}")
+                sensor_status[4] = "Off"
 
-        record_outside_humidity(outside_humidity)
-        record_outside_temperature(outside_temperature)
-        time.sleep(10)
+            record_outside_humidity(outside_humidity)
+            record_outside_temperature(outside_temperature)
+            time.sleep(10)
 
-# Start polling thread
-polling_thread = Thread(target=poll_sensors)
-polling_thread.start()
-
-def poll_consumption():
+def poll_consumption(): 
     while not stop_event.is_set():
-        result1 = client.read_holding_registers(0, 2, slave=5)
-        if not result1.isError():
-            power_consumption_data[1]['power_consumption'] = result1.registers[0]
-            record_power_consumption(result1.registers[0])
-        else:
-            print(f"Error reading device")
-        time.sleep(10)
-
-# Start polling thread
+        if start_event.is_set():
+            result1 = client.read_holding_registers(29, 2, slave=1)
+            if not result1.isError():
+                power_consumption_data[1]['power_consumption'] = ((result1.registers[0] << 16) | result1.registers[1]) /100
+                record_power_consumption(result1.registers[0])
+                sensor_status[5] = "Online"
+            else:
+                sensor_status[5] = "Offline"
+                print(f"Error reading device")
+            time.sleep(10)
+polling_thread = Thread(target=poll_sensors)
 polling_thread1 = Thread(target=poll_consumption)
-polling_thread1.start()
+
+@app.route('/sensor_status', methods=['GET'])
+def get_sensor_status():
+ return jsonify(sensor_status)
 
 @app.route('/')
 def dashboard():
@@ -211,12 +234,6 @@ def get_sensor_data():
 @app.route('/power_consumption_device_data', methods=['GET'])
 def get_power_consumption_device_data():
     return jsonify(power_consumption_data)
-
-@app.route('/stop', methods=['POST'])
-def stop_polling():
-    stop_event.set()
-    polling_thread.join()
-    return jsonify({'message': 'Polling stopped'}), 200
 
 @app.route('/adjust_temperature', methods=['POST'])
 def adjust_temperature():
@@ -257,6 +274,23 @@ def get_inside_humidity_data():
   
     print(filtered_data)
     return jsonify(filtered_data)
+
+@app.route('/start', methods=['POST'])
+def start_polling():
+    start_event.set()
+    if not polling_thread.is_alive():
+        polling_thread.start()
+    if not polling_thread1.is_alive():
+        polling_thread1.start()
+    return jsonify({'message': 'Polling started'}), 200
+
+@app.route('/stop', methods=['POST'])
+def stop_polling():
+    start_event.clear()
+    stop_event.set()
+    polling_thread.join()
+    polling_thread1.join()
+    return jsonify({'message': 'Polling stopped'}), 200
 
 @app.route('/outside_humidity_data', methods=['GET'])
 def get_outside_humidity_data():
