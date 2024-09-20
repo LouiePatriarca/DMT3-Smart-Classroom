@@ -1,18 +1,28 @@
 {% extends 'index.html' %}
 
 {% block content %}
-
+<script src="/static/js/script.js"></script>
 <div class="container-fluid">
-    <div class="row my-4">
+    <div class="row">
         <div class="col-md-auto">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">AC Unit Temperature</h5>
-                    <div class="d-flex align-items-center">
-                        <div id="temperature-display" style="font-size: 5rem;">0 °C</div>
-                        <div class="ms-auto d-inline-block">
-                            <button class="btn btn-secondary" onclick="adjustTemperature('up', event)">▲</button>
-                            <button class="btn btn-secondary mx-1" onclick="adjustTemperature('down', event)">▼</button>
+                    <h5 class="card-title"><i class="fa-solid fa-sliders"></i> System Control</h5>
+                    <div class="d-flex start-button">
+                        <button id="toggle-polling-btn" class="btn btn-success" onclick="togglePolling()">Start</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-auto">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fa-solid fa-wind"></i> AC Unit Temperature</h5>
+                    <div class="d-flex centered-content">
+                        <div id="temperature-display">24 °C</div>
+                        <div class="ms-3">
+                            <button class="btn btn-secondary d-block" onclick="adjustTemperature('up', event)">▲</button><p></p>
+                            <button class="btn btn-secondary d-block" onclick="adjustTemperature('down', event)">▼</button>
                         </div>
                     </div>
                 </div>
@@ -21,35 +31,24 @@
         <div class="col-md-auto">
             <div class="card" onclick="openPowerConsumptionPlot()">
                 <div class="card-body">
-                    <h5 class="card-title">Power Consumption</h5>
-                    <div class="d-flex align-items-center">
-                        <div id="power-consumption-display" style="font-size: 5rem;">0 kWh</div>
+                    <h5 class="card-title"><i class="fa-solid fa-bolt-lightning"></i> Power Consumption</h5>
+                    <div class="d-flex centered-content">
+                        <div id="power-consumption-display">124.5 kWh</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-auto">
-            <div class="card two-rows">
-                <div class="card-body">
-                    <h5 class="card-title">System Control</h5>
-                    <div class="d-flex flex-column align-items-start">
-                        <button id="toggle-polling-btn" class="btn btn-primary mb-3" onclick="togglePolling()">Start</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
- 
-    <div class="row my-4">
         <div class="col-md-auto">
             <div class="card" onclick="openTemperaturePlot()">
                 <div class="card-body">
-                    <h5 class="card-title">Temperature</h5>
-                    <div class="d-flex align-items-center">
+                    <h5 class="card-title"><i class="fa-solid fa-temperature-three-quarters"></i> Temperature</h5>
+                    <div class="d-flex">
                         <div>
                             <p></p>
-                           <span id="inside_temperature" style="font-size: 1.5rem;">Inside Temperature: 0 °C</span></p>
-                           <span id="outside_temperature" style="font-size: 1.5rem;">Outside Temperature: 0 °C</span></p>
+                           <span>Inside Temperature:</span><br>
+                           <span id="inside_temperature" class="sensors-data"> 0 °C</span></p>
+                           <span>Outside Temperature:</span><br>
+                           <span id="outside_temperature" class="sensors-data">0 °C</span></p>
                         </div>
                     </div>
                 </div>
@@ -58,12 +57,14 @@
         <div class="col-md-auto">
             <div class="card" onclick="openHumidityPlot()">
                 <div class="card-body">
-                    <h5 class="card-title">Humidity</h5>
-                    <div class="d-flex align-items-center">
+                    <h5 class="card-title"><i class="fa-solid fa-droplet"></i> Humidity</h5>
+                    <div class="d-flex">
                         <div>
                             <p></p>
-                           <span id="inside_humidity" style="font-size: 1.5rem;">Inside Humidity: 0 %</span></p>
-                           <span id="outside_humidity" style="font-size: 1.5rem;">Outside Humidity: 0 %</span></p>
+                           <span>Inside Humidity:</span><br>
+                           <span id="inside_humidity"  class="sensors-data"> 0 %</span></p>
+                           <span>Outside Humidity:</span><br>
+                           <span id="outside_humidity"  class="sensors-data">0 %</span></p>
                         </div>
                     </div>
                 </div>
@@ -72,95 +73,39 @@
         <div class="col-md-auto">
             <div class="card two-rows">
                 <div class="card-body">
-                    <h5 class="card-title">System Status</h5>
-                    <div class="d-flex flex-column align-items-start">
-                        <div>
-                            <p id="sensor1-status" style="font-size: 1rem;">Inside Temperature Sensor 1:            Offline</p>
-                            <p id="sensor2-status" style="font-size: 1rem;">Inside Temperature Sensor 2:            Offline</p>
-                            <p id="sensor3-status" style="font-size: 1rem;">Inside Temperature Sensor 3:            Offline</p>
-                            <p id="sensor4-status" style="font-size: 1rem;">Outside Temperature Sensor:             Offline</p>
-                            <p id="sensor5-status" style="font-size: 1rem;">Power Consumption Monitoring Device:    Offline</p>
-                        </div>
+                    <h5 class="card-title"><i class="fa-solid fa-diagram-project"></i> System Status</h5>
+                    <div class="d-flex">
+                        <table class="mt-4">
+                            <tr>
+                                <td><p><i class="fa-solid fa-2xl fa-temperature-three-quarters"></i> Temperature Sensor 1</p></td>
+                                <td></td>
+                                <td><p id="sensor1-status" class="sensor-status">Online</p></td>
+                            </tr>
+                            <tr>
+                                <td><p><i class="fa-solid fa-2xl fa-temperature-three-quarters"></i> Temperature Sensor 2</p></td>
+                                <td></td>
+                                <td><p id="sensor2-status" class="sensor-status">Online</p></td>
+                            </tr>
+                            <tr>
+                                <td><p><i class="fa-solid fa-2xl fa-temperature-three-quarters"></i> Temperature Sensor 3</p></td>
+                                <td></td>
+                                <td><p id="sensor3-status" class="sensor-status">Online</p></td>
+                            </tr>
+                            <tr>
+                                <td><p><i class="fa-solid fa-2xl fa-temperature-three-quarters"></i> Temperature Sensor 4</p></td>
+                                <td></td>
+                                <td><p id="sensor4-status" class="sensor-status">Online</p></td>
+                            </tr>
+                            <tr>
+                                <td><p><i class="fa-solid fa-2xl fa-bolt-lightning"></i> Power Consumption Meter </p></td>
+                                <td></td>
+                                <td><p id="sensor5-status" class="sensor-status">Online</p></td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>  
-<script>
-    let isPolling = false;  // Variable to track the polling state
-    function adjustTemperature(direction, event) {
-        event.stopPropagation();  // Prevent the card click event
-        fetch('/adjust_temperature', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({adjustment: direction})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if(!data.temperature){
-                document.getElementById('temperature-display').textContent = '0 °C';
-            }
-            else{
-                document.getElementById('temperature-display').textContent = data.temperature + ' °C';
-            }
-        });
-    }
-
-    function openTemperaturePlot() {
-        window.location.href = '/temperature_plot';  // Redirect to the plot page
-    }
-    function openHumidityPlot() {
-        window.location.href = '/humidity_plot';  // Redirect to the plot page
-    }
-    function openPowerConsumptionPlot() {
-        window.location.href = '/power_consumption_plot';  // Redirect to the plot page
-    }
-    function togglePolling() {
-        if (isPolling) {
-            fetch('/stop', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data.message);
-                document.getElementById('toggle-polling-btn').textContent = 'Start';
-                document.getElementById('toggle-polling-btn').classList.remove('btn-danger');
-                document.getElementById('toggle-polling-btn').classList.add('btn-primary');
-                isPolling = false;
-            });
-        } else {
-            fetch('/start', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data.message);
-                document.getElementById('toggle-polling-btn').textContent = 'Stop';
-                document.getElementById('toggle-polling-btn').classList.remove('btn-primary');
-                document.getElementById('toggle-polling-btn').classList.add('btn-danger');
-                isPolling = true;
-            });
-        }
-    }
-    // Function to update sensor status
-    function updateSensorStatus() {
-        fetch('/sensor_status', {
-            method: 'GET'
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('sensor1-status').textContent = `Inside Temperature Sensor 1:           ${data.sensor1}`;
-            document.getElementById('sensor2-status').textContent = `Inside Temperature Sensor 2:           ${data.sensor2}`;
-            document.getElementById('sensor3-status').textContent = `Inside Temperature Sensor 3:           ${data.sensor3}`;
-            document.getElementById('sensor4-status').textContent = `Outside Temperature Sensor:            ${data.sensor4}`;
-            document.getElementById('sensor5-status').textContent = `Power Consumption Monitoring Device:   ${data.sensor5}`;
-        });
-    }
-
-    // Periodically update sensor status
-    setInterval(updateSensorStatus, 5000);  // Update every 5 seconds
-</script>
 {% endblock %}
